@@ -1,0 +1,22 @@
+{
+  "name": "pathfinder-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hanywang2/pathfinder-backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hanywang2/pathfinder-backend/issues"
+  },
+  "homepage": "https://github.com/hanywang2/pathfinder-backend#readme",
+  "dependencies": {
+    "axios": "^0.21.1"
+  }
+}
