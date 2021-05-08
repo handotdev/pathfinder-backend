@@ -78,7 +78,7 @@ const extractCourseData = (course) => {
     co.gradingBasisShort
   }). Available in ${co.session} ${creditsRange} credits. ${
     co.catalogAttribute
-  }. Instructors ${co.instructors.join(', ')}`;
+  }. Instructors ${co.instructors.join(', ')}`.replace(/"/g, "'");
 };
 
 const generateCoursesFile = async () => {
@@ -94,7 +94,7 @@ const generateCoursesFile = async () => {
   allSubjectsCourses.forEach((subjectCourses) => {
     subjectCourses.map((course) => {
       const parsedCourse = extractCourseData(course);
-      results += `{"text":${parsedCourse}}\n`;
+      results += `{"text":"${parsedCourse}"}\n`;
     });
   });
 
@@ -107,4 +107,4 @@ const generateCoursesFile = async () => {
   });
 };
 
-// generateCoursesFile();
+generateCoursesFile();
