@@ -82,9 +82,16 @@ app.post('/api/search', async (req, res) => {
       return extractCourseData(rawCourseData);
     });
 
-    res.send({ success: true, results: courses });
+    return res.send({ success: true, results: courses });
   } catch (err) {
-    res.send({
+    if (
+      err.response.data != null &&
+      err.response.data.error != null &&
+      err.response.data.error.type === 'invalid_request_error'
+    ) {
+      return res.send({ success: true, results: [] });
+    }
+    return res.send({
       success: false,
       error: 'Error fetching results. Please try again later',
     });
