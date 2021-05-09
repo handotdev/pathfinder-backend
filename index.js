@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
+const cors = require('cors');
 
 const app = express();
 app.use(express.json());
@@ -9,6 +10,7 @@ app.use(
     extended: true,
   })
 );
+app.use(cors());
 
 // Things todo
 
@@ -21,8 +23,8 @@ app.use(
 app.post('/api/search', async (req, res) => {
   const { query } = req.body;
 
-  const coursesResult = await axios
-    .post(
+  try {
+    const coursesResult = await axios.post(
       'https://api.openai.com/v1/engines/babbage/search',
       {
         file: process.env.COURSES_FILE_ID,
@@ -34,46 +36,49 @@ app.post('/api/search', async (req, res) => {
           Authorization: `Bearer ${process.env.GPT3_TOKEN}`,
         },
       }
-    )
-    .catch((err) =>
-      res.send({ success: false, error: err.response.data.error })
     );
 
-  const coursesText = coursesResult.data.data;
-  const sortedCoursesText = coursesText.sort((a, b) => b.score - a.score);
+    const coursesText = coursesResult.data.data;
+    const sortedCoursesText = coursesText
+      .filter((course) => course.score > 0)
+      .sort((a, b) => b.score - a.score);
 
-  const coursesParsed = sortedCoursesText.map((courseText) => {
-    const courseName = courseText.text.substr(0, courseText.text.indexOf(':'));
-    const splitName = courseName.split(' ');
+    const coursesParsed = sortedCoursesText.map((courseText) => {
+      const courseName = courseText.text.substr(
+        0,
+        courseText.text.indexOf(':')
+      );
+      const splitName = courseName.split(' ');
 
-    return {
-      subject: splitName[0],
-      number: splitName[1],
-    };
-  });
+      return {
+        subject: splitName[0],
+        number: splitName[1],
+      };
+    });
 
-  const courseDataPromises = coursesParsed.map((course) => {
-    const { subject, number } = course;
-    return axios.get(
-      `https://classes.cornell.edu/api/2.0/search/classes.json?roster=FA21&subject=${subject}&q=${number}`
-    );
-  });
+    const courseDataPromises = coursesParsed.map((course) => {
+      const { subject, number } = course;
+      return axios.get(
+        `https://classes.cornell.edu/api/2.0/search/classes.json?roster=FA21&subject=${subject}&q=${number}`
+      );
+    });
 
-  const coursesDataResult = await Promise.all(courseDataPromises);
+    const coursesDataResult = await Promise.all(courseDataPromises);
 
-  const courses = coursesDataResult.map((courseRes, i) => {
-    const rawCourseData = courseRes.data.data.classes.find(
-      (course) =>
-        course.subject === coursesParsed[i].subject &&
-        course.catalogNbr === coursesParsed[i].number
-    );
+    const courses = coursesDataResult.map((courseRes, i) => {
+      const rawCourseData = courseRes.data.data.classes.find(
+        (course) =>
+          course.subject === coursesParsed[i].subject &&
+          course.catalogNbr === coursesParsed[i].number
+      );
 
-    return extractCourseData(rawCourseData);
-  });
+      return extractCourseData(rawCourseData);
+    });
 
-  console.log(courses);
-
-  res.send({ success: true, results: courses });
+    res.send({ success: true, results: courses });
+  } catch (err) {
+    res.send({ success: false, error: err.response.data.error });
+  }
 });
 
 const extractCourseData = (course) => {
