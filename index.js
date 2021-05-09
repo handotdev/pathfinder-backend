@@ -23,6 +23,13 @@ app.use(cors());
 app.post('/api/search', async (req, res) => {
   const { query } = req.body;
 
+  if (query == null || query.length < 5) {
+    return res.send({
+      success: false,
+      error: 'Search query must be at least 5 characters long',
+    });
+  }
+
   try {
     const coursesResult = await axios.post(
       'https://api.openai.com/v1/engines/babbage/search',
@@ -77,7 +84,10 @@ app.post('/api/search', async (req, res) => {
 
     res.send({ success: true, results: courses });
   } catch (err) {
-    res.send({ success: false, error: err.response.data.error });
+    res.send({
+      success: false,
+      error: 'Error fetching results. Please try again later',
+    });
   }
 });
 
@@ -119,6 +129,7 @@ const extractCourseData = (course) => {
     distribution: course.catalogAttribute,
     instructors: uniqueInstructors.join(', '),
     grading: course.enrollGroups[0].gradingBasisLong,
+    requisites: course.catalogPrereqCoreq,
   };
 };
 

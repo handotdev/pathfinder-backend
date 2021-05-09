@@ -66,6 +66,8 @@ const extractCourseData = (course) => {
     creditsMax: course.enrollGroups[0].unitsMaximum,
     catalogAttribute: course.catalogAttribute,
     instructors: uniqueInstructors,
+    requisites: course.catalogPrereqCoreq, // NOT USED
+    level: Math.floor(course.catalogNbr / 1000) * 1000,
   };
 
   const creditsRange =
@@ -81,7 +83,10 @@ const extractCourseData = (course) => {
     co.gradingBasisShort
   }). Available in ${co.session} ${creditsRange} credits. ${
     co.catalogAttribute
-  }. Instructors ${co.instructors.join(', ')}`.replace(/"/g, "'");
+  }. Instructors ${co.instructors.join(', ')}. ${co.level} level`.replace(
+    /"/g,
+    "'"
+  );
 };
 
 const generateCoursesFile = async () => {
