@@ -10,14 +10,22 @@ app.use(
     extended: true,
   })
 );
-app.use(cors());
 
-// Things todo
-
-// 1. Scrape data into relevant JSONL file that can be uploaded
-// 2. Connect GPT-3 with hyw2 credits and search with ada or babbage
-// 3. Build simple frontend
-// 4. Deploy to website
+const allowedOrigins = ['http://localhost:3000', 'https://cupathfinder.com'];
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          'The CORS policy for this site does not ' +
+          'allow access from the specified Origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+  })
+);
 
 app.post('/api/search', async (req, res) => {
   const { query } = req.body;
