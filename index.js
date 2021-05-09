@@ -1,6 +1,124 @@
+require('dotenv').config();
+const express = require('express');
+const axios = require('axios');
+
+const app = express();
+app.use(express.json());
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+
 // Things todo
 
 // 1. Scrape data into relevant JSONL file that can be uploaded
 // 2. Connect GPT-3 with hyw2 credits and search with ada or babbage
 // 3. Build simple frontend
+
 // 4. Deploy to website
+
+app.post('/api/search', async (req, res) => {
+  const { query } = req.body;
+
+  const coursesResult = await axios
+    .post(
+      'https://api.openai.com/v1/engines/babbage/search',
+      {
+        file: process.env.COURSES_FILE_ID,
+        max_rerank: 20,
+        query,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GPT3_TOKEN}`,
+        },
+      }
+    )
+    .catch((err) =>
+      res.send({ success: false, error: err.response.data.error })
+    );
+
+  const coursesText = coursesResult.data.data;
+  const sortedCoursesText = coursesText.sort((a, b) => b.score - a.score);
+
+  const coursesParsed = sortedCoursesText.map((courseText) => {
+    const courseName = courseText.text.substr(0, courseText.text.indexOf(':'));
+    const splitName = courseName.split(' ');
+
+    return {
+      subject: splitName[0],
+      number: splitName[1],
+    };
+  });
+
+  const courseDataPromises = coursesParsed.map((course) => {
+    const { subject, number } = course;
+    return axios.get(
+      `https://classes.cornell.edu/api/2.0/search/classes.json?roster=FA21&subject=${subject}&q=${number}`
+    );
+  });
+
+  const coursesDataResult = await Promise.all(courseDataPromises);
+
+  const courses = coursesDataResult.map((courseRes, i) => {
+    const rawCourseData = courseRes.data.data.classes.find(
+      (course) =>
+        course.subject === coursesParsed[i].subject &&
+        course.catalogNbr === coursesParsed[i].number
+    );
+
+    return extractCourseData(rawCourseData);
+  });
+
+  console.log(courses);
+
+  res.send({ success: true, results: courses });
+});
+
+const extractCourseData = (course) => {
+  const instructors = course.enrollGroups[0].classSections.map(
+    (classSection) => {
+      if (
+        classSection == null ||
+        classSection.meetings == null ||
+        classSection.meetings[0] == null
+      )
+        return [];
+      return classSection.meetings[0].instructors;
+    }
+  );
+
+  const instructorsFlat = instructors.flat(1);
+  const uniqueInstructors = [
+    ...new Set(
+      instructorsFlat.map(
+        (ins) => `${ins.firstName} ${ins.lastName} (${ins.netid})`
+      )
+    ),
+  ];
+
+  const creditsRange =
+    course.enrollGroups[0].unitsMinimum == course.enrollGroups[0].unitsMaximum
+      ? `${course.enrollGroups[0].unitsMaximum}`
+      : `${course.enrollGroups[0].unitsMinimum}-${course.enrollGroups[0].unitsMaximum}`;
+
+  return {
+    subject: course.subject,
+    catalogNbr: course.catalogNbr,
+    title: course.titleLong,
+    description: course.description,
+    credits: creditsRange,
+    offered: course.catalogWhenOffered,
+    acadGroup: course.acadGroup,
+    distribution: course.catalogAttribute,
+    instructors: uniqueInstructors.join(', '),
+    grading: course.enrollGroups[0].gradingBasisLong,
+  };
+};
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

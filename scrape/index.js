@@ -52,7 +52,10 @@ const extractCourseData = (course) => {
     subjectLong: subjectMap[course.subject.toUpperCase()],
     catalogNbr: course.catalogNbr,
     titleLong: course.titleLong,
-    description: course.description,
+    description:
+      course.description != null
+        ? course.description.replace(/\n/g, ' ')
+        : course.description,
     offered: course.catalogWhenOffered,
     acadGroupShort: course.acadGroup,
     acadGroupLong: acadGroupMap[course.acadGroup],
